@@ -1,0 +1,46 @@
+import glob
+import re
+import sys
+from os.path import join
+
+#########################################
+## SCRIPT PARAMETERS - READ FROM CONFIG FILE
+
+# Directory with input fastq files and reference genome
+RESOURCES="resources/"
+RESDIR = "results/"
+
+# Reference genome file
+refgenome="PPR-UAE-1986-KJ867545.fasta"
+#########################################
+
+SAMPLES, = glob_wildcards(DATADIR+"{sample}"+ext1)
+RESDIR = "results/"
+BWA_INDEX = ['amb','ann','pac','bwt.2bit.64','0123']
+
+def message(txt):
+        sys.stderr.write("+++++ " + txt + "\n")
+
+def errormessage(txt):
+        sys.stderr.write("ERROR " + txt + "\n")
+
+# Rules not sent on jobs
+localrules: All
+
+# Rules
+rule All:
+        input:
+		expand(f'{RESOURCES}{refgenome}.{{suffix}}',suffix=BWA_INDEX)
+
+rule BWAindexRef:
+        input:
+                Ref=DATADIR+refgenome
+        output:
+                expand(f'{RESOURCES}{refgenome}.{{suffix}}',suffix=BWA_INDEX)
+        conda:
+                "BWA_env.yaml"
+        shell:
+                """
+                bwa-mem2 index {input}
+                """
+
