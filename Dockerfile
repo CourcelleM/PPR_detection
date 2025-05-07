@@ -21,12 +21,7 @@ WORKDIR /pipeline
 
 # Clone your pipeline from GitHub
 # Replace the URL with your GitHub repository URL
-RUN git clone https://github.com/yourusername/your-pipeline-repo.git .
-
-# Optionally checkout a specific branch, tag or commit
-# RUN git checkout v1.0.0
-# OR
-# RUN git checkout main
+RUN git clone https://github.com/CourcelleM/PPR_detection.git .
 
 # Set the entrypoint
 ENTRYPOINT ["snakemake"]
