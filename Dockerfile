@@ -13,14 +13,18 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Snakemake
-RUN pip3 install snakemake
+RUN wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+RUN bash Miniforge3-$(uname)-$(uname -m).sh -b -p "${HOME}/conda"
+RUN source "${HOME}/conda/etc/profile.d/conda.sh"
+
+RUN conda create -y -c conda-forge -c bioconda -n snakemake snakemake=9.3.3
+
+RUN conda activate snakemake
 
 # Create directory for the pipeline
 WORKDIR /pipeline
 
 # Clone your pipeline from GitHub
-# Replace the URL with your GitHub repository URL
 RUN git clone https://github.com/CourcelleM/PPR_detection.git .
 
 # Set the entrypoint
