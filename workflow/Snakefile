@@ -14,7 +14,6 @@ RESDIR = "results/"
 refgenome="PPR-UAE-1986-KJ867545.fasta"
 #########################################
 
-SAMPLES, = glob_wildcards(DATADIR+"{sample}"+ext1)
 RESDIR = "results/"
 BWA_INDEX = ['amb','ann','pac','bwt.2bit.64','0123']
 
@@ -30,7 +29,7 @@ localrules: All
 # Rules
 rule All:
         input:
-		expand(f'{RESOURCES}{refgenome}.{{suffix}}',suffix=BWA_INDEX)
+                expand(f'{RESOURCES}{refgenome}.{{suffix}}',suffix=BWA_INDEX)
 
 rule BWAindexRef:
         input:
