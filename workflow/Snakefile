@@ -33,7 +33,7 @@ rule All:
 
 rule BWAindexRef:
         input:
-                Ref=DATADIR+refgenome
+                Ref=RESOURCES+refgenome
         output:
                 expand(f'{RESOURCES}{refgenome}.{{suffix}}',suffix=BWA_INDEX)
         conda:
