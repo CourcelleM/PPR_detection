@@ -37,7 +37,7 @@ rule BWAindexRef:
         output:
                 expand(f'{RESOURCES}{refgenome}.{{suffix}}',suffix=BWA_INDEX)
         conda:
-                "BWA_env.yaml"
+                "envs/BWA_env.yaml"
         shell:
                 """
                 bwa-mem2 index {input}
