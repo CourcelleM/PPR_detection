@@ -15,11 +15,14 @@ RUN apt-get update && apt-get install -y \
 
 RUN wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
 RUN bash Miniforge3-$(uname)-$(uname -m).sh -b -p "${HOME}/conda"
-RUN source "${HOME}/conda/etc/profile.d/conda.sh"
+RUN chmod +x "${HOME}/conda/etc/profile.d/conda.sh"
+RUN "${HOME}/conda/etc/profile.d/conda.sh"
+
+ENV PATH="$PATH:/root/conda/condabin"
 
 RUN conda create -y -c conda-forge -c bioconda -n snakemake snakemake=9.3.3
 
-RUN conda activate snakemake
+SHELL ["conda", "run", "-n", "snakemake", "/bin/bash", "-c"]
 
 # Create directory for the pipeline
 WORKDIR /pipeline
