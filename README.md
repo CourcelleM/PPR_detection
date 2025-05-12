@@ -1,6 +1,6 @@
 # PPR Detection Pipeline
 
-This repository contains a Snakemake workflow for detecting Pentatricopeptide Repeat (PPR) motifs.
+This repository contains a Snakemake workflow for detecting and assembling Peste des Petits Ruminants (PPR) sequences.
 
 ## Quickstart (with Docker)
 
