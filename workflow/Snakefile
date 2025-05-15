@@ -29,8 +29,11 @@ localrules: All
 # Rules
 rule All:
         input:
-                expand(f"{RESDIR}0_cleaning/{{smp}}_R1_ATROPOS.fastq.gz", smp=samples),
-                expand(f"{RESDIR}0_cleaning/{{smp}}_R2_ATROPOS.fastq.gz", smp=samples)
+#               expand(f"{RESDIR}0_cleaning/{{smp}}_R1_ATROPOS.fastq.gz", smp=samples),
+#               expand(f"{RESDIR}0_cleaning/{{smp}}_R2_ATROPOS.fastq.gz", smp=samples),
+#               expand(f"{RESDIR}1_mapping/{{smp}}_consensus1.fasta.bwt.2bit.64", smp=samples),
+#               expand(f"{RESDIR}1_mapping/{{smp}}_mapping-to-cons.sam", smp=samples),
+                expand(f"{RESDIR}1_mapping/{{smp}}_consensus2.fasta", smp=samples)
 
 rule BWAindexRef:
         input:
@@ -57,5 +60,94 @@ rule Atropos:
                 """
                 (atropos trim --threads 2 --minimum-length 35  -q 20,20  -U 8  -O 10 -o {output.R1} -p {output.R2} -pe1 {input.R1} -pe2 {input.R2})
                 """
+
+rule BWA_align_to_ref:
+	input:
+		R1 = rules.Atropos.output.R1, 
+		R2 = rules.Atropos.output.R2,
+		Ref = f"{RESOURCES}{refgenome}",
+		Index = rules.BWAindexRef.output
+	output:
+		temp(f"{RESDIR}1_mapping/{{samples}}_mapping-to-ref.sam")
+	conda:
+		"envs/BWA_env.yaml"
+	shell:
+		"""
+		bwa-mem2 mem -t 2 -L 8,8 -B 2 {input.Ref} {input.R1} {input.R2} > {output}
+		"""
+
+rule Sort_consensus:
+	input:
+		rules.BWA_align_to_ref.output
+	output: 
+		consensus = f"{RESDIR}1_mapping/{{samples}}_consensus1.fasta"
+	conda:
+		"envs/samtools_env.yaml"
+	params:
+		sam = f"{RESDIR}1_mapping/{{samples}}_mapping-to-ref_sorted.sam"
+	shell:
+		"""
+		samtools sort {input} -O sam -o {params.sam}
+		samtools consensus -a -f fasta --show-del no {params.sam} -o {output.consensus}
+		rm {params.sam}
+		"""
+
+rule Index_consensus:
+	input:
+		rules.Sort_consensus.output.consensus
+	output:
+		f"{RESDIR}1_mapping/{{samples}}_consensus1.fasta.bwt.2bit.64"
+	conda:
+		"envs/BWA_env.yaml"
+	shell:
+		"""
+		bwa-mem2 index {input}	
+		"""
+
+rule BWA_align_to_consensus:
+        input:
+                R1 = rules.Atropos.output.R1,
+                R2 = rules.Atropos.output.R2,
+                Index = rules.Index_consensus.output,
+                Ref = rules.Sort_consensus.output.consensus
+        output:
+                temp(f"{RESDIR}1_mapping/{{samples}}_mapping-to-cons.sam")
+        conda:
+                "envs/BWA_env.yaml"
+        shell:
+                """
+                bwa-mem2 mem -t 2 -L 8,8 -B 2 {input.Ref} {input.R1} {input.R2} -T 51 > {output}
+                """
+
+rule Consensus_final:
+        input:
+                rules.BWA_align_to_consensus.output
+        output: 
+                consensus = f"{RESDIR}1_mapping/{{samples}}_consensus2.fasta",
+                sam = temp(f"{RESDIR}1_mapping/{{samples}}_mapping-to-ref_sorted.sam")
+        conda:
+                "envs/samtools_env.yaml"
+        params:
+                sam = f"{RESDIR}1_mapping/{{samples}}_mapping-to-ref_sorted.sam",
+                seqID=">"+"{samples}",
+                mincov=2,
+                minfrac=0.9,
+                minQ=51
+        shell:
+                """
+                samtools sort {input} -O sam -o {output.sam}
+                samtools consensus -m "simple" -A -d {params.mincov} -c 0.5 -H {params.minfrac} --min-MQ {params.minQ} -f fasta --show-del no {output.sam} -o {output.consensus}
+                sed -i "s/>.*$/{params.seqID}/" {output.consensus}
+                """
+
+
+
+
+
+
+
+
+
+
 
 
