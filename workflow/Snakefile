@@ -29,11 +29,8 @@ localrules: All
 # Rules
 rule All:
         input:
-#               expand(f"{RESDIR}0_cleaning/{{smp}}_R1_ATROPOS.fastq.gz", smp=samples),
-#               expand(f"{RESDIR}0_cleaning/{{smp}}_R2_ATROPOS.fastq.gz", smp=samples),
-#               expand(f"{RESDIR}1_mapping/{{smp}}_consensus1.fasta.bwt.2bit.64", smp=samples),
-#               expand(f"{RESDIR}1_mapping/{{smp}}_mapping-to-cons.sam", smp=samples),
-                expand(f"{RESDIR}1_mapping/{{smp}}_consensus2.fasta", smp=samples)
+                expand(f"{RESDIR}1_mapping/{{smp}}_consensus2.fasta", smp=samples),
+                expand(f"{RESDIR}2_N-gene_fragment/{{smp}}_Ngene_fragment.fasta", smp=samples)
 
 rule BWAindexRef:
         input:
@@ -140,14 +137,47 @@ rule Consensus_final:
                 sed -i "s/>.*$/{params.seqID}/" {output.consensus}
                 """
 
+rule Hmmer_hmmbuild:
+	input:
+		f"{RESOURCES}NP3-NP4_database.fasta"
+	output:
+		f"{RESOURCES}NP3-NP4_database.hmm"
+	conda:
+		"envs/hmmer_env.yaml"
+	shell:
+		"""
+		hmmbuild {output} {input}
+		"""
 
+rule Hmmer_nhmmer:
+	input:
+		database = rules.Hmmer_hmmbuild.output,
+		consensus = rules.Consensus_final.output.consensus
+	output:
+		temp(f"{RESDIR}2_N-gene_fragment/{{samples}}.hmmits")
+	conda:
+		"envs/hmmer_env.yaml"
+	shell:
+		"""
+		nhmmer -o {output} {input.database} {input.consensus} 
+		"""
 
-
-
-
-
-
-
-
-
-
+rule Extract_hmmer_hits:
+	input:
+		hits = rules.Hmmer_nhmmer.output,
+		consensus = rules.Consensus_final.output.consensus
+	output:
+		f"{RESDIR}2_N-gene_fragment/{{samples}}_Ngene_fragment.fasta"
+	params:
+		seqname = f"{{samples}}_Ngene_fragment_between_NP3_and_NP4_primers"
+	shell:
+		"""
+		hit=$(grep -A3 "Scores for complete hits" {input.hits} | tail -n1 | tr -s ' ')
+		seq=$(grep -v '>' {input.consensus} | tr -d '\r\n')
+		start=$(expr $(echo $hit | cut -d' ' -f5) - 1)
+		stop=$(echo $hit | cut -d' ' -f6)
+		length=$(expr $stop - $start)
+		echo $start $stop $length
+		echo ">"{params.seqname} > {output}
+		echo ${{seq:$start:$length}} >> {output}
+		"""
